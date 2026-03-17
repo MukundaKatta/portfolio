@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SkillsRadar from '../components/SkillsRadar.astro';
+import Timeline from '../components/Timeline.astro';
+import siteData from '../data/site.json';
+---
+
+<BaseLayout title="About" description="Learn more about Alex Chen - full-stack developer, open source contributor, and TypeScript enthusiast.">
+  <div class="container-narrow py-12 sm:py-20">
+    <!-- Header -->
+    <header class="mb-16 animate-on-scroll">
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-6">
+        About <span class="gradient-text">Me</span>
+      </h1>
+      <div class="prose prose-lg dark:prose-invert max-w-none">
+        <p>
+          I'm Alex Chen, a full-stack developer based in San Francisco with over 5 years of experience building web applications. I currently work as a Senior Developer at TechCorp, where I lead the frontend architecture team.
+        </p>
+        <p>
+          My passion lies at the intersection of developer experience and user experience. I believe that the best software is built by teams that have excellent tools and workflows. That's why I spend a lot of my time building design systems, contributing to open source tooling, and writing about development best practices.
+        </p>
+        <p>
+          When I'm not coding, you'll find me hiking in the Bay Area, experimenting with specialty coffee, or reading about distributed systems. I'm also an avid photographer and occasionally share my work on social media.
+        </p>
+      </div>
+    </header>
+
+    <!-- Skills -->
+    <section class="mb-16 animate-on-scroll" aria-label="Skills">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-8">Skills</h2>
+      <SkillsRadar skills={siteData.skills} />
+    </section>
+
+    <!-- Timeline -->
+    <section class="mb-16 animate-on-scroll" aria-label="Career timeline">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-8">Experience</h2>
+      <Timeline items={siteData.timeline} />
+    </section>
+
+    <!-- Connect -->
+    <section class="animate-on-scroll" aria-label="Connect with me">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6">Let's Connect</h2>
+      <p class="text-slate-600 dark:text-slate-400 mb-6">
+        I'm always happy to chat about web development, open source, or potential collaborations.
+      </p>
+      <div class="flex flex-wrap gap-4">
+        <a href={siteData.social.github} target="_blank" rel="noopener noreferrer" class="btn-secondary text-sm">
+          GitHub
+        </a>
+        <a href={siteData.social.twitter} target="_blank" rel="noopener noreferrer" class="btn-secondary text-sm">
+          Twitter/X
+        </a>
+        <a href={siteData.social.linkedin} target="_blank" rel="noopener noreferrer" class="btn-secondary text-sm">
+          LinkedIn
+        </a>
+        <a href="/contact" class="btn-primary text-sm">
+          Get in Touch
+        </a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

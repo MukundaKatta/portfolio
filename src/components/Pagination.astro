@@ -1,0 +1,72 @@
+---
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  baseUrl: string;
+}
+
+const { currentPage, totalPages, baseUrl } = Astro.props;
+
+function getPageUrl(page: number): string {
+  if (page === 1) return baseUrl;
+  return `${baseUrl}/${page}`;
+}
+
+const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+const showPages = pages.filter(
+  (p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1
+);
+---
+
+{totalPages > 1 && (
+  <nav class="flex items-center justify-center gap-2 mt-12" aria-label="Pagination">
+    {currentPage > 1 && (
+      <a
+        href={getPageUrl(currentPage - 1)}
+        class="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        aria-label="Previous page"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+      </a>
+    )}
+
+    {showPages.map((page, i) => {
+      const prev = showPages[i - 1];
+      const showEllipsis = prev && page - prev > 1;
+      return (
+        <>
+          {showEllipsis && (
+            <span class="px-2 text-slate-400" aria-hidden="true">...</span>
+          )}
+          <a
+            href={getPageUrl(page)}
+            class:list={[
+              'w-10 h-10 flex items-center justify-center rounded-lg text-sm font-medium transition-colors',
+              page === currentPage
+                ? 'bg-brand-600 text-white'
+                : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300',
+            ]}
+            aria-label={`Page ${page}`}
+            aria-current={page === currentPage ? 'page' : undefined}
+          >
+            {page}
+          </a>
+        </>
+      );
+    })}
+
+    {currentPage < totalPages && (
+      <a
+        href={getPageUrl(currentPage + 1)}
+        class="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        aria-label="Next page"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </a>
+    )}
+  </nav>
+)}

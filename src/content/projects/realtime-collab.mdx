@@ -1,0 +1,41 @@
+---
+title: "CollabPad"
+description: "A real-time collaborative document editor with operational transformation, presence indicators, and version history, built with React and WebSockets."
+tags: ["React", "Node.js", "WebSocket", "Redis"]
+github: "https://github.com/alexchen/collabpad"
+live: "https://collabpad.example.com"
+featured: true
+order: 3
+---
+
+## Overview
+
+CollabPad is a Google Docs-inspired collaborative editor that supports real-time editing by multiple users simultaneously. It uses operational transformation (OT) to resolve conflicts and maintains a complete version history that users can browse and restore.
+
+## Technical Challenges
+
+### Conflict Resolution
+
+The core challenge of collaborative editing is handling simultaneous edits. If User A inserts text at position 10 while User B deletes text at position 5, the operations need to be transformed to produce the correct result on both clients.
+
+CollabPad implements the OT algorithm with a centralized server that acts as the source of truth. Each client maintains a local buffer of pending operations that have not yet been acknowledged by the server.
+
+### Presence and Cursors
+
+Each user's cursor position is broadcast to all other participants in real time. The system uses a Redis Pub/Sub channel for each document, allowing the presence layer to scale horizontally across multiple server instances.
+
+### Version History
+
+Every operation is stored in PostgreSQL with a timestamp and author. The version history UI lets users scrub through the document's history with a timeline slider, seeing who changed what and when.
+
+## Stack
+
+- **Frontend**: React with a custom rich text editor built on ProseMirror
+- **Backend**: Node.js with Express and ws (WebSocket library)
+- **Database**: PostgreSQL for document storage and version history
+- **Caching**: Redis for presence data and operation buffering
+- **Infrastructure**: Docker Compose for local dev, deployed on Railway
+
+## Lessons Learned
+
+Building a collaborative editor taught me that the UI is the easy part. The hard problems are conflict resolution, handling network partitions gracefully, and ensuring that the document state converges correctly across all clients even when messages arrive out of order.

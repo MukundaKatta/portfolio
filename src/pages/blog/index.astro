@@ -1,0 +1,67 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BlogCard from '../../components/BlogCard.astro';
+import Pagination from '../../components/Pagination.astro';
+import { getCollection } from 'astro:content';
+import { readingTime, getUniqueTagsFromPosts, SITE } from '../../lib/utils';
+
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const sortedPosts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const tags = getUniqueTagsFromPosts(sortedPosts);
+
+const totalPages = Math.ceil(sortedPosts.length / SITE.postsPerPage);
+const currentPage = 1;
+const posts = sortedPosts.slice(0, SITE.postsPerPage);
+---
+
+<BaseLayout title="Blog" description="Articles about web development, TypeScript, React, and modern tooling.">
+  <div class="container-wide py-12 sm:py-20">
+    <header class="mb-12 animate-on-scroll">
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+        Blog
+      </h1>
+      <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">
+        Writing about web development, design systems, TypeScript, and the tools that make developers more productive.
+      </p>
+    </header>
+
+    <!-- Tags -->
+    {tags.length > 0 && (
+      <div class="flex flex-wrap gap-2 mb-10 animate-on-scroll">
+        <a
+          href="/blog"
+          class="badge bg-brand-600 text-white dark:bg-brand-500"
+        >
+          All
+        </a>
+        {tags.map((tag) => (
+          <a
+            href={`/blog/tags/${tag}`}
+            class="badge hover:bg-brand-200 dark:hover:bg-brand-800 transition-colors"
+          >
+            {tag}
+          </a>
+        ))}
+      </div>
+    )}
+
+    <!-- Posts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {posts.map((post) => (
+        <div class="animate-on-scroll">
+          <BlogCard
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            tags={post.data.tags}
+            slug={post.slug}
+            readingTime={post.data.readingTime || readingTime(post.body || '')}
+          />
+        </div>
+      ))}
+    </div>
+
+    <Pagination currentPage={currentPage} totalPages={totalPages} baseUrl="/blog" />
+  </div>
+</BaseLayout>

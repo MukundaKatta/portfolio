@@ -1,0 +1,40 @@
+---
+import { formatDate } from '../lib/utils';
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  tags?: string[];
+  slug: string;
+  readingTime?: string;
+}
+
+const { title, description, pubDate, tags = [], slug, readingTime } = Astro.props;
+---
+
+<article class="card p-6 group relative">
+  <div class="flex flex-wrap gap-2 mb-3">
+    {tags.slice(0, 3).map((tag) => (
+      <span class="badge text-xs">{tag}</span>
+    ))}
+  </div>
+
+  <h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+    <a href={`/blog/${slug}`} class="after:absolute after:inset-0">
+      {title}
+    </a>
+  </h3>
+
+  <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">{description}</p>
+
+  <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+    <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+    {readingTime && (
+      <>
+        <span aria-hidden="true">&middot;</span>
+        <span>{readingTime}</span>
+      </>
+    )}
+  </div>
+</article>

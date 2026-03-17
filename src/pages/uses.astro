@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import siteData from '../data/site.json';
+
+const { hardware, software, stack } = siteData.uses;
+---
+
+<BaseLayout title="Uses" description="The tools, hardware, and software I use daily for development and productivity.">
+  <div class="container-narrow py-12 sm:py-20">
+    <header class="mb-12 animate-on-scroll">
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+        What I <span class="gradient-text">Use</span>
+      </h1>
+      <p class="text-lg text-slate-600 dark:text-slate-400">
+        A comprehensive list of the hardware, software, and tools that power my daily workflow. Inspired by <a href="https://uses.tech" target="_blank" rel="noopener noreferrer" class="text-brand-600 dark:text-brand-400 hover:underline">uses.tech</a>.
+      </p>
+    </header>
+
+    <!-- Hardware -->
+    <section class="mb-16 animate-on-scroll" aria-label="Hardware">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-900 flex items-center justify-center">
+          <svg class="w-4 h-4 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </span>
+        Hardware
+      </h2>
+      <div class="space-y-4">
+        {hardware.map((item) => (
+          <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 p-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+            <h3 class="font-semibold text-slate-900 dark:text-white min-w-48">{item.name}</h3>
+            <p class="text-slate-600 dark:text-slate-400 text-sm">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Software -->
+    <section class="mb-16 animate-on-scroll" aria-label="Software">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-accent-100 dark:bg-accent-900 flex items-center justify-center">
+          <svg class="w-4 h-4 text-accent-600 dark:text-accent-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+        </span>
+        Software
+      </h2>
+      <div class="space-y-4">
+        {software.map((item) => (
+          <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 p-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+            <h3 class="font-semibold text-slate-900 dark:text-white min-w-48">{item.name}</h3>
+            <p class="text-slate-600 dark:text-slate-400 text-sm">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Dev Stack -->
+    <section class="animate-on-scroll" aria-label="Development stack">
+      <h2 class="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+        <span class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+          <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+          </svg>
+        </span>
+        Dev Stack
+      </h2>
+      <div class="space-y-4">
+        {stack.map((item) => (
+          <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 p-4 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+            <h3 class="font-semibold text-slate-900 dark:text-white min-w-48">{item.name}</h3>
+            <p class="text-slate-600 dark:text-slate-400 text-sm">{item.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  </div>
+</BaseLayout>

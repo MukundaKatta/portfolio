@@ -1,0 +1,235 @@
+---
+title: "Building Type-Safe APIs with tRPC and React Query"
+description: "Learn how to build end-to-end type-safe APIs using tRPC, eliminating the need for manual type definitions and API schemas while getting full autocomplete in your IDE."
+pubDate: 2025-01-15
+tags: ["typescript", "react", "api", "trpc"]
+readingTime: "8 min read"
+---
+
+If you have ever worked on a full-stack TypeScript project, you know the pain of keeping your frontend and backend types in sync. You define a response type on the server, then manually create a matching interface on the client. When the API changes, you have to update both sides or risk runtime errors that TypeScript was supposed to prevent.
+
+tRPC solves this problem elegantly. It lets you build APIs where the types flow automatically from your server to your client, giving you full autocomplete and type checking without any code generation step.
+
+## What Is tRPC?
+
+tRPC stands for TypeScript Remote Procedure Call. Instead of defining REST endpoints or GraphQL schemas, you define procedures on the server that the client can call directly. The magic is that TypeScript infers the input and output types across the network boundary.
+
+Here is a simple example of what a tRPC router looks like:
+
+```typescript
+import { initTRPC } from '@trpc/server';
+import { z } from 'zod';
+
+const t = initTRPC.create();
+
+export const appRouter = t.router({
+  getUser: t.procedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const user = await db.user.findUnique({
+        where: { id: input.id },
+      });
+      return user;
+    }),
+
+  createPost: t.procedure
+    .input(z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1),
+      published: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      const post = await db.post.create({ data: input });
+      return post;
+    }),
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+The `AppRouter` type export is the key. When the client imports this type, it gets full knowledge of every procedure, its inputs, and its outputs.
+
+## Setting Up the Client
+
+On the client side, you create a tRPC client that knows about your router's type:
+
+```typescript
+import { createTRPCReact } from '@trpc/react-query';
+import type { AppRouter } from '../server/router';
+
+export const trpc = createTRPCReact<AppRouter>();
+```
+
+Now when you use this client in a React component, you get complete autocomplete:
+
+```tsx
+function UserProfile({ userId }: { userId: string }) {
+  const { data: user, isLoading } = trpc.getUser.useQuery({ id: userId });
+
+  if (isLoading) return <Skeleton />;
+  if (!user) return <NotFound />;
+
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+```
+
+The `user` variable is automatically typed based on what your `getUser` procedure returns. If you change the server to return additional fields, the client types update instantly. If you remove a field that the client uses, TypeScript flags the error at compile time.
+
+## Validation with Zod
+
+tRPC pairs naturally with Zod for input validation. The Zod schema serves triple duty: it validates the input at runtime, provides the TypeScript type for the input, and documents the expected shape of the data.
+
+```typescript
+const createUserSchema = z.object({
+  name: z.string().min(2).max(100),
+  email: z.string().email(),
+  role: z.enum(['admin', 'user', 'moderator']),
+  preferences: z.object({
+    theme: z.enum(['light', 'dark', 'system']).default('system'),
+    notifications: z.boolean().default(true),
+  }).optional(),
+});
+
+const userRouter = t.router({
+  create: t.procedure
+    .input(createUserSchema)
+    .mutation(async ({ input }) => {
+      // input is fully typed here
+      return db.user.create({ data: input });
+    }),
+});
+```
+
+On the client, the `useMutation` hook enforces the same types:
+
+```tsx
+function CreateUserForm() {
+  const createUser = trpc.create.useMutation({
+    onSuccess: (newUser) => {
+      // newUser is typed based on what the mutation returns
+      toast.success(`Created user ${newUser.name}`);
+    },
+  });
+
+  function handleSubmit(formData: FormData) {
+    createUser.mutate({
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+      role: 'user', // TypeScript ensures this is a valid enum value
+    });
+  }
+
+  return <form onSubmit={handleSubmit}>...</form>;
+}
+```
+
+## Middleware and Context
+
+tRPC supports middleware for cross-cutting concerns like authentication. You define middleware that enriches the context, and downstream procedures get access to the enriched types:
+
+```typescript
+const isAuthed = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+  return next({
+    ctx: {
+      session: ctx.session,
+      user: ctx.session.user, // Now guaranteed to exist
+    },
+  });
+});
+
+const protectedProcedure = t.procedure.use(isAuthed);
+
+const adminRouter = t.router({
+  // ctx.user is typed and guaranteed to exist here
+  getStats: protectedProcedure.query(async ({ ctx }) => {
+    return getStatsForUser(ctx.user.id);
+  }),
+});
+```
+
+## Error Handling
+
+tRPC provides structured error handling that works across the network boundary. You throw typed errors on the server, and the client can handle them with full type information:
+
+```typescript
+import { TRPCError } from '@trpc/server';
+
+const postRouter = t.router({
+  update: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      title: z.string().optional(),
+      content: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const post = await db.post.findUnique({ where: { id: input.id } });
+
+      if (!post) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Post not found',
+        });
+      }
+
+      if (post.authorId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You can only edit your own posts',
+        });
+      }
+
+      return db.post.update({
+        where: { id: input.id },
+        data: input,
+      });
+    }),
+});
+```
+
+## Performance Considerations
+
+tRPC supports request batching out of the box. When your React components make multiple tRPC calls during a single render cycle, tRPC automatically batches them into a single HTTP request. This reduces network overhead without any changes to your component code.
+
+You can also leverage React Query's built-in caching, prefetching, and optimistic updates:
+
+```typescript
+// Prefetch data for a route
+await queryClient.prefetchQuery(
+  trpc.getUser.queryKey({ id: userId }),
+  () => trpc.getUser.fetch({ id: userId })
+);
+
+// Optimistic updates
+const utils = trpc.useUtils();
+const updatePost = trpc.post.update.useMutation({
+  onMutate: async (newData) => {
+    await utils.post.getById.cancel({ id: newData.id });
+    const previous = utils.post.getById.getData({ id: newData.id });
+    utils.post.getById.setData({ id: newData.id }, (old) => ({
+      ...old!,
+      ...newData,
+    }));
+    return { previous };
+  },
+  onError: (err, newData, context) => {
+    utils.post.getById.setData(
+      { id: newData.id },
+      context!.previous
+    );
+  },
+});
+```
+
+## When to Choose tRPC
+
+tRPC is ideal when you control both the client and server and both are written in TypeScript. It excels in monorepo setups where the server and client share a codebase. If you need to expose a public API for third-party consumers, a REST API with OpenAPI documentation or GraphQL might be more appropriate.
+
+The key advantages are zero code generation, instant feedback when types change, and a development experience that feels like calling local functions even though you are making network requests. Combined with Zod for validation and React Query for caching, tRPC provides one of the best developer experiences available for full-stack TypeScript applications.

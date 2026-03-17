@@ -1,0 +1,277 @@
+---
+title: "Edge Computing with Cloudflare Workers: A Practical Guide"
+description: "How to build and deploy serverless applications at the edge using Cloudflare Workers, KV storage, and D1 databases for ultra-low latency APIs."
+pubDate: 2025-03-01
+tags: ["cloudflare", "serverless", "performance"]
+readingTime: "9 min read"
+---
+
+Traditional serverless functions run in a few centralized regions. Your user in Tokyo makes a request, which travels to a data center in Virginia, processes, and travels back. That round trip adds hundreds of milliseconds of latency. Edge computing eliminates this by running your code in data centers close to your users. Cloudflare Workers execute in over 300 locations worldwide, meaning your code runs within milliseconds of virtually any user on the planet.
+
+## Understanding the Workers Runtime
+
+Cloudflare Workers use the V8 JavaScript engine, the same engine that powers Chrome and Node.js. However, the runtime is not Node.js. It is a lean environment built on Web APIs like `fetch`, `Request`, `Response`, `URL`, and the Streams API. There is no `fs` module, no `process` object, and no Node.js-specific APIs.
+
+A basic Worker looks like this:
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    if (url.pathname === '/api/hello') {
+      return Response.json({
+        message: 'Hello from the edge!',
+        location: request.cf?.city || 'unknown',
+        timestamp: Date.now(),
+      });
+    }
+
+    return new Response('Not Found', { status: 404 });
+  },
+};
+```
+
+The `request.cf` object contains geolocation data about the request, including the user's city, country, timezone, and even the ASN of their ISP. This data is available without any external API calls because Cloudflare resolves it at the network layer.
+
+## Routing and Request Handling
+
+For applications with multiple routes, you can build a lightweight router without any framework:
+
+```typescript
+type Handler = (request: Request, env: Env) => Promise<Response>;
+
+const routes: Record<string, Record<string, Handler>> = {
+  GET: {
+    '/api/posts': getPosts,
+    '/api/posts/:id': getPost,
+    '/api/health': healthCheck,
+  },
+  POST: {
+    '/api/posts': createPost,
+    '/api/contact': submitContact,
+  },
+};
+
+function matchRoute(method: string, pathname: string) {
+  const methodRoutes = routes[method] || {};
+
+  for (const [pattern, handler] of Object.entries(methodRoutes)) {
+    const regex = new RegExp(
+      '^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'
+    );
+    const match = pathname.match(regex);
+    if (match) {
+      return { handler, params: match.groups || {} };
+    }
+  }
+  return null;
+}
+```
+
+For more complex applications, the Hono framework is an excellent choice. It is built specifically for edge runtimes and adds less than 14KB to your bundle:
+
+```typescript
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+
+const app = new Hono<{ Bindings: Env }>();
+
+app.use('*', logger());
+app.use('/api/*', cors());
+
+app.get('/api/posts', async (c) => {
+  const posts = await c.env.DB.prepare(
+    'SELECT * FROM posts ORDER BY created_at DESC LIMIT 20'
+  ).all();
+  return c.json(posts.results);
+});
+
+app.get('/api/posts/:id', async (c) => {
+  const id = c.req.param('id');
+  const post = await c.env.DB.prepare(
+    'SELECT * FROM posts WHERE id = ?'
+  ).bind(id).first();
+
+  if (!post) return c.json({ error: 'Not found' }, 404);
+  return c.json(post);
+});
+
+export default app;
+```
+
+## Data Storage with KV
+
+Workers KV is a globally distributed key-value store optimized for read-heavy workloads. Data written to KV propagates to all edge locations within about 60 seconds. It is ideal for configuration, cached API responses, and session data.
+
+```typescript
+// Writing data
+await env.CACHE_KV.put('config:site', JSON.stringify({
+  maintenance: false,
+  featureFlags: {
+    newDashboard: true,
+    betaAPI: false,
+  },
+}), {
+  expirationTtl: 3600, // Cache for 1 hour
+});
+
+// Reading data
+const config = await env.CACHE_KV.get('config:site', 'json');
+
+// Listing keys with prefix
+const sessions = await env.CACHE_KV.list({ prefix: 'session:' });
+```
+
+A common pattern is using KV as a cache layer in front of slower data sources:
+
+```typescript
+async function getCachedData(key: string, env: Env, fetcher: () => Promise<any>) {
+  // Check KV cache first
+  const cached = await env.CACHE_KV.get(key, 'json');
+  if (cached) return cached;
+
+  // Fetch fresh data
+  const data = await fetcher();
+
+  // Write to cache with TTL
+  await env.CACHE_KV.put(key, JSON.stringify(data), {
+    expirationTtl: 300, // 5 minutes
+  });
+
+  return data;
+}
+
+// Usage
+const posts = await getCachedData('posts:recent', env, async () => {
+  const res = await fetch('https://api.example.com/posts');
+  return res.json();
+});
+```
+
+## SQL at the Edge with D1
+
+D1 is Cloudflare's serverless SQLite database. It runs at the edge, giving you the power of SQL queries with low latency:
+
+```typescript
+// Create tables (run via wrangler migration)
+// CREATE TABLE posts (
+//   id INTEGER PRIMARY KEY AUTOINCREMENT,
+//   title TEXT NOT NULL,
+//   slug TEXT UNIQUE NOT NULL,
+//   content TEXT NOT NULL,
+//   views INTEGER DEFAULT 0,
+//   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+// );
+
+async function getPopularPosts(env: Env) {
+  const result = await env.DB.prepare(`
+    SELECT id, title, slug, views, created_at
+    FROM posts
+    WHERE created_at > datetime('now', '-30 days')
+    ORDER BY views DESC
+    LIMIT 10
+  `).all();
+
+  return result.results;
+}
+
+async function incrementViews(env: Env, slug: string) {
+  const result = await env.DB.prepare(`
+    UPDATE posts SET views = views + 1 WHERE slug = ?
+    RETURNING views
+  `).bind(slug).first();
+
+  return result?.views || 0;
+}
+```
+
+D1 supports batch operations for better performance when you need multiple queries:
+
+```typescript
+const results = await env.DB.batch([
+  env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(postId),
+  env.DB.prepare('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC').bind(postId),
+  env.DB.prepare('UPDATE posts SET views = views + 1 WHERE id = ?').bind(postId),
+]);
+
+const [post, comments] = results;
+```
+
+## Durable Objects for State
+
+While Workers are stateless by design, Durable Objects provide strongly consistent, single-threaded state for use cases like real-time collaboration, rate limiting, and WebSocket handling:
+
+```typescript
+export class RateLimiter {
+  state: DurableObjectState;
+  requests: Map<string, number[]>;
+
+  constructor(state: DurableObjectState) {
+    this.state = state;
+    this.requests = new Map();
+  }
+
+  async fetch(request: Request) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    const now = Date.now();
+    const window = 60_000; // 1 minute
+    const limit = 100;
+
+    const timestamps = this.requests.get(ip) || [];
+    const recent = timestamps.filter((t) => now - t < window);
+
+    if (recent.length >= limit) {
+      return Response.json(
+        { error: 'Rate limit exceeded' },
+        {
+          status: 429,
+          headers: { 'Retry-After': '60' },
+        }
+      );
+    }
+
+    recent.push(now);
+    this.requests.set(ip, recent);
+
+    return Response.json({ remaining: limit - recent.length });
+  }
+}
+```
+
+## Deployment and Configuration
+
+A typical `wrangler.toml` for a production Worker looks like this:
+
+```toml
+name = "my-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[kv_namespaces]]
+binding = "CACHE_KV"
+id = "your-kv-namespace-id"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "your-database-id"
+```
+
+Deploy with a single command:
+
+```bash
+wrangler deploy
+```
+
+For local development, `wrangler dev` provides a local server that emulates the Workers runtime, including access to KV and D1 bindings.
+
+## Performance Benchmarks
+
+In practice, edge-deployed Workers respond in 5-20ms for simple operations, compared to 100-300ms for traditional serverless functions. The difference is most dramatic for users far from centralized cloud regions. A user in Sydney accessing a US-East Lambda function experiences roughly 200ms of network latency alone. The same request to a Worker completes in under 15ms total because the code runs in Sydney.
+
+Edge computing is not a silver bullet. Write-heavy workloads still need to propagate to a primary database, and complex computations might be better suited to traditional servers. But for read-heavy APIs, authentication, content transformation, and A/B testing, deploying at the edge provides a measurable improvement in user experience.

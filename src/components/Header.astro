@@ -1,0 +1,55 @@
+---
+import ThemeToggle from './react/ThemeToggle';
+import MobileMenu from './react/MobileMenu';
+import SearchDialog from './react/SearchDialog';
+
+const navItems = [
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  { label: 'Projects', href: '/projects' },
+  { label: 'Blog', href: '/blog' },
+  { label: 'Uses', href: '/uses' },
+  { label: 'Contact', href: '/contact' },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<header class="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-lg" transition:persist>
+  <nav class="container-wide flex items-center justify-between h-16" aria-label="Main navigation">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2 font-bold text-xl group" aria-label="Home">
+      <span class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white text-sm font-mono group-hover:bg-brand-700 transition-colors">
+        AC
+      </span>
+      <span class="hidden sm:inline text-slate-900 dark:text-white">alex<span class="text-brand-600">.dev</span></span>
+    </a>
+
+    <!-- Desktop Nav -->
+    <ul class="hidden md:flex items-center gap-1" role="list">
+      {navItems.map(({ label, href }) => (
+        <li>
+          <a
+            href={href}
+            class:list={[
+              'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+              currentPath === href || (href !== '/' && currentPath.startsWith(href))
+                ? 'bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800',
+            ]}
+            aria-current={currentPath === href ? 'page' : undefined}
+          >
+            {label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2">
+      <SearchDialog client:load />
+      <ThemeToggle client:load />
+      <MobileMenu client:load navItems={navItems} currentPath={currentPath} />
+    </div>
+  </nav>
+</header>

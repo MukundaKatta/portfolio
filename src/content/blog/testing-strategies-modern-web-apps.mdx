@@ -1,0 +1,343 @@
+---
+title: "Testing Strategies for Modern Web Applications"
+description: "A practical guide to building a comprehensive testing strategy using Vitest, Playwright, and Testing Library, covering unit tests, integration tests, and end-to-end testing."
+pubDate: 2024-09-25
+tags: ["testing", "typescript", "react", "devops"]
+readingTime: "10 min read"
+---
+
+Every developer knows they should write tests. Few agree on what to test, how much to test, or which tools to use. The testing landscape has matured significantly, and the tools available today make it easier than ever to build a testing strategy that catches real bugs without slowing down development.
+
+This article covers a practical approach to testing modern web applications, focusing on the right level of testing for each part of your codebase.
+
+## The Testing Trophy
+
+Kent C. Dodds popularized the "testing trophy" as an alternative to the traditional testing pyramid. The trophy emphasizes integration tests as the primary testing layer, with static analysis at the base, unit tests for complex logic, and a thin layer of end-to-end tests at the top.
+
+The reasoning is straightforward: integration tests give you the most confidence per line of test code. A unit test might verify that a function formats a date correctly, but an integration test verifies that the user actually sees the formatted date in the right place on the page.
+
+## Static Analysis: The Foundation
+
+Before writing a single test, set up TypeScript and ESLint. These tools catch entire categories of bugs for free:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  }
+}
+```
+
+The `noUncheckedIndexedAccess` option is particularly valuable. It forces you to handle the case where an array index or object property access returns `undefined`:
+
+```typescript
+const items = ['a', 'b', 'c'];
+
+// Without noUncheckedIndexedAccess:
+const first = items[0]; // Type: string (wrong, could be undefined)
+
+// With noUncheckedIndexedAccess:
+const first = items[0]; // Type: string | undefined (correct)
+if (first) {
+  console.log(first.toUpperCase()); // Safe
+}
+```
+
+## Unit Tests with Vitest
+
+Use unit tests for pure functions, utility libraries, and complex business logic. Vitest is the best choice for this because it is fast, compatible with the Vite ecosystem, and has an API identical to Jest:
+
+```typescript
+// utils/price.ts
+export function calculateDiscount(
+  price: number,
+  discount: { type: 'percentage' | 'fixed'; value: number }
+): number {
+  if (price < 0) throw new Error('Price cannot be negative');
+  if (discount.value < 0) throw new Error('Discount cannot be negative');
+
+  if (discount.type === 'percentage') {
+    const discounted = price * (1 - discount.value / 100);
+    return Math.max(0, Math.round(discounted * 100) / 100);
+  }
+
+  return Math.max(0, price - discount.value);
+}
+```
+
+```typescript
+// utils/price.test.ts
+import { describe, it, expect } from 'vitest';
+import { calculateDiscount } from './price';
+
+describe('calculateDiscount', () => {
+  it('applies percentage discount correctly', () => {
+    expect(calculateDiscount(100, { type: 'percentage', value: 20 }))
+      .toBe(80);
+  });
+
+  it('applies fixed discount correctly', () => {
+    expect(calculateDiscount(100, { type: 'fixed', value: 30 }))
+      .toBe(70);
+  });
+
+  it('does not return negative prices', () => {
+    expect(calculateDiscount(10, { type: 'fixed', value: 50 }))
+      .toBe(0);
+  });
+
+  it('handles floating point correctly', () => {
+    expect(calculateDiscount(19.99, { type: 'percentage', value: 15 }))
+      .toBe(16.99);
+  });
+
+  it('throws on negative price', () => {
+    expect(() => calculateDiscount(-10, { type: 'fixed', value: 5 }))
+      .toThrow('Price cannot be negative');
+  });
+});
+```
+
+Notice that these tests focus on behavior, not implementation. They describe what the function should do, not how it does it internally.
+
+## Integration Tests with Testing Library
+
+Integration tests verify that components work together correctly. React Testing Library encourages testing from the user's perspective:
+
+```tsx
+// components/checkout-form.test.tsx
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { CheckoutForm } from './checkout-form';
+
+// Mock the API call, not the internal implementation
+const mockSubmitOrder = vi.fn();
+
+vi.mock('@/lib/api', () => ({
+  submitOrder: (...args: any[]) => mockSubmitOrder(...args),
+}));
+
+describe('CheckoutForm', () => {
+  beforeEach(() => {
+    mockSubmitOrder.mockReset();
+  });
+
+  it('submits the order with correct data', async () => {
+    const user = userEvent.setup();
+    mockSubmitOrder.mockResolvedValue({ orderId: '123' });
+
+    render(
+      <CheckoutForm
+        items={[
+          { id: '1', name: 'Widget', price: 29.99, quantity: 2 },
+        ]}
+      />
+    );
+
+    // Fill in the form like a user would
+    await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
+    await user.type(screen.getByLabelText(/card number/i), '4242424242424242');
+    await user.type(screen.getByLabelText(/expiry/i), '12/25');
+    await user.type(screen.getByLabelText(/cvc/i), '123');
+
+    // Verify the total is displayed
+    expect(screen.getByText('$59.98')).toBeInTheDocument();
+
+    // Submit
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+
+    // Verify the API was called correctly
+    await waitFor(() => {
+      expect(mockSubmitOrder).toHaveBeenCalledWith({
+        email: 'jane@example.com',
+        items: [{ id: '1', quantity: 2 }],
+        payment: expect.objectContaining({
+          cardNumber: '4242424242424242',
+        }),
+      });
+    });
+
+    // Verify success message
+    expect(screen.getByText(/order confirmed/i)).toBeInTheDocument();
+    expect(screen.getByText('123')).toBeInTheDocument(); // Order ID
+  });
+
+  it('displays validation errors for empty fields', async () => {
+    const user = userEvent.setup();
+    render(<CheckoutForm items={[]} />);
+
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+
+    expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+  });
+
+  it('handles API errors gracefully', async () => {
+    const user = userEvent.setup();
+    mockSubmitOrder.mockRejectedValue(new Error('Network error'));
+
+    render(<CheckoutForm items={[{ id: '1', name: 'Widget', price: 9.99, quantity: 1 }]} />);
+
+    // Fill in minimum required fields
+    await user.type(screen.getByLabelText(/email/i), 'jane@example.com');
+    await user.type(screen.getByLabelText(/card number/i), '4242424242424242');
+    await user.type(screen.getByLabelText(/expiry/i), '12/25');
+    await user.type(screen.getByLabelText(/cvc/i), '123');
+    await user.click(screen.getByRole('button', { name: /place order/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+The key principles here are: query by accessibility roles and labels (not test IDs or class names), interact with the component the way a user would, and assert on visible outcomes.
+
+## End-to-End Tests with Playwright
+
+E2E tests verify critical user journeys through the entire application. They are slower and more brittle than other test types, so focus on the most important flows:
+
+```typescript
+// tests/e2e/auth-flow.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Authentication', () => {
+  test('user can sign up and access dashboard', async ({ page }) => {
+    await page.goto('/signup');
+
+    await page.getByLabel('Name').fill('Jane Doe');
+    await page.getByLabel('Email').fill(`jane+${Date.now()}@example.com`);
+    await page.getByLabel('Password').fill('SecurePass123!');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+
+    // Should redirect to dashboard
+    await expect(page).toHaveURL('/dashboard');
+    await expect(page.getByText('Welcome, Jane')).toBeVisible();
+  });
+
+  test('user can log in and log out', async ({ page }) => {
+    // Use a seeded test account
+    await page.goto('/login');
+
+    await page.getByLabel('Email').fill('test@example.com');
+    await page.getByLabel('Password').fill('testpass123');
+    await page.getByRole('button', { name: 'Sign In' }).click();
+
+    await expect(page).toHaveURL('/dashboard');
+
+    // Log out
+    await page.getByRole('button', { name: 'Account menu' }).click();
+    await page.getByRole('menuitem', { name: 'Sign Out' }).click();
+
+    await expect(page).toHaveURL('/');
+    await expect(page.getByRole('link', { name: 'Sign In' })).toBeVisible();
+  });
+});
+```
+
+Playwright also excels at visual regression testing. You can capture screenshots and compare them across test runs:
+
+```typescript
+test('homepage matches snapshot', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveScreenshot('homepage.png', {
+    maxDiffPixels: 100,
+  });
+});
+```
+
+## Testing API Routes
+
+For API routes, test the HTTP interface directly rather than importing handler functions:
+
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+const BASE_URL = 'http://localhost:3000';
+
+describe('POST /api/posts', () => {
+  it('creates a post with valid data', async () => {
+    const response = await fetch(`${BASE_URL}/api/posts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${testToken}`,
+      },
+      body: JSON.stringify({
+        title: 'Test Post',
+        content: 'This is a test post.',
+      }),
+    });
+
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data).toMatchObject({
+      id: expect.any(String),
+      title: 'Test Post',
+      content: 'This is a test post.',
+    });
+  });
+
+  it('returns 401 without authentication', async () => {
+    const response = await fetch(`${BASE_URL}/api/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Test', content: 'Test' }),
+    });
+
+    expect(response.status).toBe(401);
+  });
+});
+```
+
+## Continuous Integration
+
+Set up your CI pipeline to run tests in order of speed and importance:
+
+```yaml
+# .github/workflows/test.yml
+name: Test
+on: [push, pull_request]
+
+jobs:
+  lint-and-type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+
+  unit-and-integration:
+    runs-on: ubuntu-latest
+    needs: lint-and-type-check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npm test -- --coverage
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: unit-and-integration
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npm run test:e2e
+```
+
+The pipeline fails fast: if linting fails, you do not waste time running slower tests. E2E tests only run after unit and integration tests pass.
+
+## Practical Guidelines
+
+Write tests for code that handles money, authentication, and data integrity. Write tests for code that has broken before. Write tests for code that is difficult to test manually. Do not write tests for trivial getters, framework boilerplate, or third-party library internals.
+
+Aim for about 80% code coverage, but do not treat it as a target. Coverage tells you what code was executed during tests, not whether the tests are meaningful. One well-written integration test often provides more value than ten unit tests that check implementation details.
+
+The best testing strategy is one that your team actually maintains. Start with the tests that give you the most confidence and expand from there.

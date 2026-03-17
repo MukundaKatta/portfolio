@@ -1,0 +1,48 @@
+---
+title: "Pulse Analytics"
+description: "A lightweight, privacy-focused web analytics dashboard built with Cloudflare Workers, D1, and React, designed as an alternative to Google Analytics."
+tags: ["Cloudflare Workers", "React", "D1", "Analytics"]
+github: "https://github.com/alexchen/pulse-analytics"
+featured: false
+order: 4
+---
+
+## Overview
+
+Pulse Analytics is a privacy-first web analytics tool that runs entirely on Cloudflare's edge network. It tracks page views, unique visitors, referrers, and browser information without using cookies or collecting personal data, making it GDPR-compliant by design.
+
+## Why Build This
+
+Google Analytics is overpowered for most websites and raises privacy concerns. Existing alternatives like Plausible and Fathom are excellent but cost money. Pulse runs on Cloudflare's free tier for sites with up to 100K requests per day, making it truly free for small to medium sites.
+
+## Architecture
+
+The tracking script is a 1.2KB JavaScript snippet that sends a single POST request on page load. The Cloudflare Worker receives the request, extracts basic information from headers (country, browser, referrer), and writes it to a D1 database.
+
+The dashboard is a React SPA that queries the Worker API for aggregated analytics data. All queries are performed with SQL aggregations in D1, so the dashboard loads quickly regardless of traffic volume.
+
+```sql
+-- Most visited pages in the last 30 days
+SELECT
+  pathname,
+  COUNT(*) as views,
+  COUNT(DISTINCT visitor_id) as unique_visitors
+FROM page_views
+WHERE timestamp > datetime('now', '-30 days')
+GROUP BY pathname
+ORDER BY views DESC
+LIMIT 20;
+```
+
+## Features
+
+- **Real-time dashboard** with page views, unique visitors, and top pages
+- **Referrer tracking** to see where traffic comes from
+- **Geographic data** using Cloudflare's built-in geolocation (no third-party API needed)
+- **Device and browser breakdown** from User-Agent parsing
+- **API access** for building custom integrations
+- **Self-hostable** on any Cloudflare account with a free plan
+
+## Performance
+
+The tracking script adds less than 1ms to page load time. The Worker processes each request in under 5ms. The entire system runs within Cloudflare's free tier limits for sites receiving under 100,000 page views per day.

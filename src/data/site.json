@@ -1,0 +1,71 @@
+{
+  "name": "Alex Chen",
+  "role": "Full-Stack Developer",
+  "bio": "I build performant, accessible web applications with modern tools. Passionate about developer experience, design systems, and open source.",
+  "location": "San Francisco, CA",
+  "email": "alex@example.com",
+  "social": {
+    "github": "https://github.com/alexchen",
+    "twitter": "https://twitter.com/alexchen",
+    "linkedin": "https://linkedin.com/in/alexchen",
+    "mastodon": "https://mastodon.social/@alexchen"
+  },
+  "skills": [
+    { "name": "TypeScript", "level": 95 },
+    { "name": "React", "level": 92 },
+    { "name": "Node.js", "level": 88 },
+    { "name": "Python", "level": 75 },
+    { "name": "Go", "level": 65 },
+    { "name": "DevOps", "level": 78 },
+    { "name": "Databases", "level": 82 },
+    { "name": "System Design", "level": 80 }
+  ],
+  "timeline": [
+    {
+      "year": "2024",
+      "title": "Senior Developer at TechCorp",
+      "description": "Leading the frontend architecture team, building design systems and improving DX."
+    },
+    {
+      "year": "2022",
+      "title": "Developer at StartupXYZ",
+      "description": "Built real-time collaboration features and scaled the app to 100k users."
+    },
+    {
+      "year": "2020",
+      "title": "Junior Developer at WebAgency",
+      "description": "Delivered 20+ client projects using React, Next.js, and headless CMS solutions."
+    },
+    {
+      "year": "2019",
+      "title": "CS Degree, UC Berkeley",
+      "description": "Graduated with honors. Focus on distributed systems and human-computer interaction."
+    }
+  ],
+  "uses": {
+    "hardware": [
+      { "name": "MacBook Pro 16\" M3 Max", "description": "Main development machine with 64GB RAM" },
+      { "name": "Dell U3423WE", "description": "34\" ultrawide monitor for multitasking" },
+      { "name": "Keychron Q1 Pro", "description": "Mechanical keyboard with Gateron Brown switches" },
+      { "name": "Logitech MX Master 3S", "description": "Ergonomic mouse for all-day use" }
+    ],
+    "software": [
+      { "name": "VS Code", "description": "Primary editor with Vim keybindings" },
+      { "name": "Warp", "description": "Modern terminal with AI features" },
+      { "name": "Arc Browser", "description": "Organized browsing with workspaces" },
+      { "name": "Raycast", "description": "Launcher and productivity tool" },
+      { "name": "Figma", "description": "UI design and prototyping" },
+      { "name": "Notion", "description": "Notes, docs, and project management" }
+    ],
+    "stack": [
+      { "name": "Astro", "description": "Static sites with island architecture" },
+      { "name": "React + Next.js", "description": "Complex interactive applications" },
+      { "name": "TypeScript", "description": "Type safety everywhere" },
+      { "name": "Tailwind CSS", "description": "Utility-first styling" },
+      { "name": "PostgreSQL", "description": "Primary database for most projects" },
+      { "name": "Redis", "description": "Caching and real-time features" },
+      { "name": "Docker", "description": "Containerized development and deployment" },
+      { "name": "GitHub Actions", "description": "CI/CD pipelines" }
+    ]
+  }
+}

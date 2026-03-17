@@ -1,0 +1,97 @@
+---
+const roles = ['Full-Stack Developer', 'TypeScript Enthusiast', 'Open Source Contributor', 'UI/UX Tinkerer'];
+---
+
+<section class="relative overflow-hidden" aria-label="Introduction">
+  <div class="absolute inset-0 -z-10">
+    <div class="absolute top-0 -left-4 w-72 h-72 bg-brand-300/20 dark:bg-brand-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl animate-pulse"></div>
+    <div class="absolute top-0 -right-4 w-72 h-72 bg-accent-300/20 dark:bg-accent-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl animate-pulse" style="animation-delay: 2s;"></div>
+    <div class="absolute -bottom-8 left-20 w-72 h-72 bg-purple-300/20 dark:bg-purple-500/10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl animate-pulse" style="animation-delay: 4s;"></div>
+  </div>
+
+  <div class="container-wide py-20 sm:py-32">
+    <div class="max-w-3xl">
+      <div class="flex items-center gap-3 mb-6 animate-on-scroll">
+        <div class="w-3 h-3 rounded-full bg-accent-500 animate-pulse"></div>
+        <span class="text-sm font-medium text-slate-600 dark:text-slate-400">Available for freelance work</span>
+      </div>
+
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white mb-6 animate-on-scroll">
+        Hi, I'm <span class="gradient-text">Alex Chen</span>
+      </h1>
+
+      <div class="h-10 sm:h-12 mb-8 animate-on-scroll">
+        <p class="text-xl sm:text-2xl text-slate-600 dark:text-slate-400 font-mono" id="typing-text" aria-label="Full-Stack Developer">
+          <span class="typing-cursor"></span>
+        </p>
+      </div>
+
+      <p class="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mb-10 animate-on-scroll">
+        I craft performant, accessible web applications with modern tools. Currently building design systems at TechCorp and contributing to open source projects that make developers' lives easier.
+      </p>
+
+      <div class="flex flex-wrap gap-4 animate-on-scroll">
+        <a href="/projects" class="btn-primary">
+          View my work
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+        <a href="/blog" class="btn-secondary">
+          Read the blog
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .typing-cursor::after {
+    content: '|';
+    animation: blink 0.75s step-end infinite;
+    color: theme('colors.brand.500');
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+</style>
+
+<script define:vars={{ roles }}>
+  const el = document.getElementById('typing-text');
+  if (el) {
+    let roleIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    const speed = 80;
+    const deleteSpeed = 40;
+    const pauseTime = 2000;
+
+    function type() {
+      const currentRole = roles[roleIndex];
+      const span = el.querySelector('.typing-cursor');
+
+      if (isDeleting) {
+        if (span) span.textContent = currentRole.substring(0, charIndex - 1);
+        charIndex--;
+      } else {
+        if (span) span.textContent = currentRole.substring(0, charIndex + 1);
+        charIndex++;
+      }
+
+      if (!isDeleting && charIndex === currentRole.length) {
+        setTimeout(() => { isDeleting = true; type(); }, pauseTime);
+        return;
+      }
+
+      if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        roleIndex = (roleIndex + 1) % roles.length;
+      }
+
+      setTimeout(type, isDeleting ? deleteSpeed : speed);
+    }
+
+    type();
+  }
+</script>

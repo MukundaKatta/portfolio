@@ -1,0 +1,117 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import BlogCard from '../components/BlogCard.astro';
+import TechStack from '../components/TechStack.astro';
+import Newsletter from '../components/Newsletter.astro';
+import { getCollection } from 'astro:content';
+import { readingTime } from '../lib/utils';
+
+const allProjects = await getCollection('projects');
+const featuredProjects = allProjects
+  .filter((p) => p.data.featured)
+  .sort((a, b) => a.data.order - b.data.order)
+  .slice(0, 3);
+
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const recentPosts = allPosts
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 4);
+---
+
+<BaseLayout>
+  <Hero />
+
+  <!-- Featured Projects -->
+  <section class="py-16 sm:py-20 bg-slate-50 dark:bg-slate-900/50" aria-label="Featured projects">
+    <div class="container-wide">
+      <div class="flex items-end justify-between mb-10">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 animate-on-scroll">
+            Featured Projects
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 animate-on-scroll">
+            A selection of things I've built recently
+          </p>
+        </div>
+        <a href="/projects" class="hidden sm:flex btn-secondary text-sm animate-on-scroll">
+          View all
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {featuredProjects.map((project) => (
+          <div class="animate-on-scroll">
+            <ProjectCard
+              title={project.data.title}
+              description={project.data.description}
+              tags={project.data.tags}
+              github={project.data.github}
+              live={project.data.live}
+              image={project.data.image}
+              slug={project.slug}
+            />
+          </div>
+        ))}
+      </div>
+
+      <a href="/projects" class="sm:hidden btn-secondary text-sm mt-6 w-full justify-center">
+        View all projects
+      </a>
+    </div>
+  </section>
+
+  <TechStack />
+
+  <!-- Recent Posts -->
+  <section class="py-16 sm:py-20 bg-slate-50 dark:bg-slate-900/50" aria-label="Recent blog posts">
+    <div class="container-wide">
+      <div class="flex items-end justify-between mb-10">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2 animate-on-scroll">
+            Latest Posts
+          </h2>
+          <p class="text-slate-600 dark:text-slate-400 animate-on-scroll">
+            Thoughts on web development, design, and tech
+          </p>
+        </div>
+        <a href="/blog" class="hidden sm:flex btn-secondary text-sm animate-on-scroll">
+          View all
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {recentPosts.map((post) => (
+          <div class="animate-on-scroll">
+            <BlogCard
+              title={post.data.title}
+              description={post.data.description}
+              pubDate={post.data.pubDate}
+              tags={post.data.tags}
+              slug={post.slug}
+              readingTime={post.data.readingTime || readingTime(post.body || '')}
+            />
+          </div>
+        ))}
+      </div>
+
+      <a href="/blog" class="sm:hidden btn-secondary text-sm mt-6 w-full justify-center">
+        View all posts
+      </a>
+    </div>
+  </section>
+
+  <!-- Newsletter -->
+  <section class="py-16 sm:py-20" aria-label="Newsletter signup">
+    <div class="container-narrow">
+      <Newsletter />
+    </div>
+  </section>
+</BaseLayout>

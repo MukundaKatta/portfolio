@@ -1,0 +1,254 @@
+---
+title: "React Server Components: A Deep Dive Into the Architecture"
+description: "Understanding how React Server Components work under the hood, when to use them, and how they change the way we think about building React applications."
+pubDate: 2024-11-10
+tags: ["react", "frontend", "architecture"]
+readingTime: "11 min read"
+---
+
+React Server Components represent a fundamental shift in React's architecture. They allow components to run exclusively on the server, sending only their rendered output to the client. This is not server-side rendering in the traditional sense. SSR renders your entire component tree on the server but still ships all the JavaScript to the client for hydration. Server Components never send their code to the client at all.
+
+## The Mental Model
+
+In the RSC architecture, you have two types of components:
+
+**Server Components** run only on the server. They can directly access databases, read files, call internal APIs, and use server-only libraries. Their JavaScript is never included in the client bundle. By default, all components in the App Router are Server Components.
+
+**Client Components** are the traditional React components you already know. They run on both the server (for SSR) and the client (for interactivity). You opt into Client Components by adding the `'use client'` directive at the top of a file.
+
+```tsx
+// This is a Server Component (default)
+// It can directly access the database
+async function PostList() {
+  const posts = await db.post.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+  });
+
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>
+          <PostCard post={post} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+```tsx
+'use client';
+
+// This is a Client Component
+// It can use hooks, event handlers, and browser APIs
+import { useState } from 'react';
+
+function LikeButton({ postId, initialCount }: Props) {
+  const [count, setCount] = useState(initialCount);
+  const [isLiked, setIsLiked] = useState(false);
+
+  async function handleLike() {
+    setIsLiked(!isLiked);
+    setCount((c) => (isLiked ? c - 1 : c + 1));
+
+    await fetch(`/api/posts/${postId}/like`, {
+      method: isLiked ? 'DELETE' : 'POST',
+    });
+  }
+
+  return (
+    <button onClick={handleLike} aria-pressed={isLiked}>
+      {isLiked ? '♥' : '♡'} {count}
+    </button>
+  );
+}
+```
+
+The key insight is that Server Components can import and render Client Components, but Client Components cannot import Server Components. However, Client Components can accept Server Components as children through the `children` prop.
+
+## The Serialization Boundary
+
+When the server renders your component tree, it needs to serialize the output to send to the client. Server Components are serialized into a special format called the RSC payload. This payload contains the rendered HTML along with references to Client Component placeholders.
+
+The serialization boundary is the `'use client'` directive. Everything above it stays on the server. Everything below it gets included in the client bundle. This means you need to be intentional about where you place this boundary:
+
+```tsx
+// layout.tsx (Server Component)
+import { getUser } from '@/lib/auth';
+import Sidebar from './sidebar'; // Server Component
+import InteractivePanel from './interactive-panel'; // Client Component
+
+export default async function Layout({ children }) {
+  const user = await getUser();
+
+  return (
+    <div className="flex">
+      <Sidebar user={user} />
+      <main>
+        <InteractivePanel>
+          {children}
+        </InteractivePanel>
+      </main>
+    </div>
+  );
+}
+```
+
+The `Sidebar` is a Server Component, so it can fetch user data without shipping any JavaScript. The `InteractivePanel` is a Client Component that needs to handle mouse events or state, but it receives `children` (which could be Server Components) as a prop.
+
+## Data Fetching Patterns
+
+Server Components simplify data fetching dramatically. Instead of `useEffect` with loading states, or client-side data fetching libraries, you just use `async/await`:
+
+```tsx
+async function Dashboard() {
+  // These run in parallel on the server
+  const [stats, recentActivity, notifications] = await Promise.all([
+    getStats(),
+    getRecentActivity(),
+    getNotifications(),
+  ]);
+
+  return (
+    <div className="grid grid-cols-3 gap-6">
+      <StatsPanel data={stats} />
+      <ActivityFeed items={recentActivity} />
+      <NotificationList notifications={notifications} />
+    </div>
+  );
+}
+```
+
+Since Server Components run on the server, there is no waterfall problem. The server fetches all data before sending any HTML to the client. The user sees a complete page instead of a loading skeleton that fills in piece by piece.
+
+For cases where parts of the page should load independently, React provides the `Suspense` boundary:
+
+```tsx
+async function Page() {
+  return (
+    <div>
+      <Header />
+      <Suspense fallback={<StatsSkeleton />}>
+        <StatsPanel />
+      </Suspense>
+      <Suspense fallback={<FeedSkeleton />}>
+        <ActivityFeed />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+Each `Suspense` boundary streams its content independently. The header appears immediately, and each section fills in as its data resolves.
+
+## Server Actions
+
+Server Actions complement Server Components by providing a way to handle mutations. They are functions that run on the server but can be called from Client Components:
+
+```tsx
+// actions.ts
+'use server';
+
+import { revalidatePath } from 'next/cache';
+
+export async function createComment(formData: FormData) {
+  const content = formData.get('content') as string;
+  const postId = formData.get('postId') as string;
+
+  await db.comment.create({
+    data: {
+      content,
+      postId,
+      authorId: await getCurrentUserId(),
+    },
+  });
+
+  revalidatePath(`/posts/${postId}`);
+}
+```
+
+```tsx
+'use client';
+
+import { createComment } from './actions';
+import { useFormStatus } from 'react-dom';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending}>
+      {pending ? 'Posting...' : 'Post Comment'}
+    </button>
+  );
+}
+
+function CommentForm({ postId }: { postId: string }) {
+  return (
+    <form action={createComment}>
+      <input type="hidden" name="postId" value={postId} />
+      <textarea name="content" required />
+      <SubmitButton />
+    </form>
+  );
+}
+```
+
+Server Actions work with progressive enhancement. If JavaScript fails to load, the form still submits as a regular HTML form. When JavaScript is available, the submission happens without a full page reload.
+
+## Bundle Size Impact
+
+The most tangible benefit of Server Components is reduced client-side JavaScript. Consider a blog post page that uses a Markdown rendering library, a syntax highlighting library, and a date formatting library. With traditional client rendering, all of these libraries ship to the browser:
+
+```
+Traditional approach:
+- react-markdown: 45KB
+- prismjs + languages: 120KB
+- date-fns: 30KB
+- Component code: 15KB
+Total: ~210KB of JavaScript
+
+Server Components approach:
+- LikeButton component: 3KB
+- CommentForm component: 5KB
+Total: ~8KB of JavaScript
+```
+
+The heavy rendering libraries stay on the server. The client only receives the HTML they produce plus the small interactive components that need JavaScript.
+
+## Common Mistakes
+
+**Mistake 1: Making everything a Client Component.** When you add `'use client'` to a file, it and all of its imports become part of the client bundle. Push the `'use client'` boundary as deep as possible in the component tree.
+
+**Mistake 2: Passing non-serializable data.** Props passed from Server Components to Client Components must be serializable. You cannot pass functions, class instances, or Dates (use ISO strings instead).
+
+**Mistake 3: Fetching data in Client Components when a Server Component would work.** If a component does not need interactivity, it should be a Server Component. Only add `'use client'` when you need hooks, event handlers, or browser APIs.
+
+```tsx
+// Bad: Client Component that doesn't need to be
+'use client';
+import { useEffect, useState } from 'react';
+
+function UserProfile({ userId }) {
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    fetch(`/api/users/${userId}`).then(r => r.json()).then(setUser);
+  }, [userId]);
+  if (!user) return <Skeleton />;
+  return <div>{user.name}</div>;
+}
+
+// Good: Server Component
+async function UserProfile({ userId }) {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  return <div>{user.name}</div>;
+}
+```
+
+## When Server Components Make Sense
+
+Server Components shine in content-heavy applications: blogs, documentation sites, e-commerce product pages, and dashboards. They are less beneficial for highly interactive applications like real-time collaboration tools or games where most of the UI needs client-side state.
+
+The architecture works best when you think of your application as a mix of static content (Server Components) with interactive islands (Client Components). This aligns naturally with how most web applications work: the majority of a page is static content, with specific areas of interactivity.
+
+Adopting Server Components is not an all-or-nothing decision. You can gradually move data-fetching components from Client to Server while keeping interactive components as Client Components. The key is identifying which components truly need client-side interactivity and which are merely rendering data.

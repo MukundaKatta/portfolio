@@ -1,0 +1,74 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import BlogCard from '../../../components/BlogCard.astro';
+import { getCollection } from 'astro:content';
+import { readingTime, getUniqueTagsFromPosts } from '../../../lib/utils';
+
+export async function getStaticPaths() {
+  const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+  const tags = getUniqueTagsFromPosts(allPosts);
+
+  return tags.map((tag) => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: allPosts
+        .filter((post) => post.data.tags?.includes(tag))
+        .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()),
+    },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+const allPosts = await getCollection('blog', ({ data }) => !data.draft);
+const allTags = getUniqueTagsFromPosts(allPosts);
+---
+
+<BaseLayout title={`Posts tagged "${tag}"`} description={`All blog posts tagged with ${tag}.`}>
+  <div class="container-wide py-12 sm:py-20">
+    <header class="mb-12 animate-on-scroll">
+      <a href="/blog" class="text-sm text-brand-600 dark:text-brand-400 hover:underline mb-4 inline-block">
+        &larr; All posts
+      </a>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+        Tagged: <span class="gradient-text">{tag}</span>
+      </h1>
+      <p class="text-slate-600 dark:text-slate-400">
+        {posts.length} post{posts.length !== 1 ? 's' : ''} found
+      </p>
+    </header>
+
+    <!-- All tags -->
+    <div class="flex flex-wrap gap-2 mb-10 animate-on-scroll">
+      <a href="/blog" class="badge hover:bg-brand-200 dark:hover:bg-brand-800 transition-colors">All</a>
+      {allTags.map((t) => (
+        <a
+          href={`/blog/tags/${t}`}
+          class:list={[
+            'badge transition-colors',
+            t === tag
+              ? 'bg-brand-600 text-white dark:bg-brand-500'
+              : 'hover:bg-brand-200 dark:hover:bg-brand-800',
+          ]}
+        >
+          {t}
+        </a>
+      ))}
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {posts.map((post) => (
+        <div class="animate-on-scroll">
+          <BlogCard
+            title={post.data.title}
+            description={post.data.description}
+            pubDate={post.data.pubDate}
+            tags={post.data.tags}
+            slug={post.slug}
+            readingTime={post.data.readingTime || readingTime(post.body || '')}
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

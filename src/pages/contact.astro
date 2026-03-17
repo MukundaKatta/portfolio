@@ -1,0 +1,79 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+import siteData from '../data/site.json';
+---
+
+<BaseLayout title="Contact" description="Get in touch with Alex Chen. Available for freelance work, collaborations, and speaking opportunities.">
+  <div class="container-narrow py-12 sm:py-20">
+    <header class="mb-12 animate-on-scroll">
+      <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-4">
+        Get in <span class="gradient-text">Touch</span>
+      </h1>
+      <p class="text-lg text-slate-600 dark:text-slate-400">
+        Have a project in mind? Want to collaborate? Or just want to say hello? I'd love to hear from you.
+      </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-12">
+      <!-- Form -->
+      <div class="lg:col-span-3 animate-on-scroll">
+        <ContactForm />
+      </div>
+
+      <!-- Info sidebar -->
+      <aside class="lg:col-span-2 animate-on-scroll">
+        <div class="space-y-8">
+          <div>
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-white mb-3 uppercase tracking-wider">Email</h2>
+            <a href={`mailto:${siteData.email}`} class="text-brand-600 dark:text-brand-400 hover:underline">
+              {siteData.email}
+            </a>
+          </div>
+
+          <div>
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-white mb-3 uppercase tracking-wider">Location</h2>
+            <p class="text-slate-600 dark:text-slate-400">{siteData.location}</p>
+          </div>
+
+          <div>
+            <h2 class="text-sm font-semibold text-slate-900 dark:text-white mb-3 uppercase tracking-wider">Social</h2>
+            <div class="flex flex-col gap-2">
+              <a href={siteData.social.github} target="_blank" rel="noopener noreferrer" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors text-sm">
+                GitHub
+              </a>
+              <a href={siteData.social.twitter} target="_blank" rel="noopener noreferrer" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors text-sm">
+                Twitter/X
+              </a>
+              <a href={siteData.social.linkedin} target="_blank" rel="noopener noreferrer" class="text-slate-600 dark:text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors text-sm">
+                LinkedIn
+              </a>
+            </div>
+          </div>
+
+          <div class="p-6 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <h2 class="font-semibold text-slate-900 dark:text-white mb-2">Available for</h2>
+            <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <li class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-accent-500"></div>
+                Freelance projects
+              </li>
+              <li class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-accent-500"></div>
+                Consulting & code reviews
+              </li>
+              <li class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-accent-500"></div>
+                Speaking & workshops
+              </li>
+              <li class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-accent-500"></div>
+                Open source collaboration
+              </li>
+            </ul>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>

@@ -1,0 +1,47 @@
+---
+title: "DevKit CLI"
+description: "A command-line toolkit for bootstrapping and managing full-stack TypeScript projects with built-in linting, testing, and deployment configurations."
+tags: ["TypeScript", "Node.js", "CLI", "Open Source"]
+github: "https://github.com/alexchen/devkit-cli"
+live: "https://www.npmjs.com/package/devkit-cli"
+featured: true
+order: 1
+---
+
+## Overview
+
+DevKit CLI is a developer productivity tool that eliminates the boilerplate of setting up new TypeScript projects. Instead of spending hours configuring ESLint, Prettier, Vitest, Playwright, GitHub Actions, and Docker, you run a single command and get a production-ready setup.
+
+## The Problem
+
+Every new project starts the same way: copy config files from the last project, update the package name, fix the versions that have drifted, realize the ESLint config is outdated, spend an hour updating it, and finally start writing actual code. DevKit automates this entire process.
+
+## Key Features
+
+- **Project scaffolding** with templates for React, Next.js, Astro, Node.js API, and CLI tools
+- **Opinionated defaults** for ESLint, Prettier, TypeScript, and Git hooks
+- **Built-in testing setup** with Vitest for unit tests and Playwright for E2E
+- **CI/CD generation** for GitHub Actions, GitLab CI, and CircleCI
+- **Docker support** with multi-stage builds optimized for production
+- **Monorepo support** with Turborepo integration
+
+## Technical Details
+
+The CLI is built with Commander.js for argument parsing, Inquirer.js for interactive prompts, and Handlebars for template rendering. Templates are stored as embedded assets in the npm package, so there is no network request during project creation.
+
+```bash
+# Create a new project
+npx devkit-cli create my-app --template react-vite
+
+# Add configurations to existing project
+npx devkit-cli init --eslint --prettier --vitest --docker
+
+# Update all configs to latest standards
+npx devkit-cli upgrade
+```
+
+The upgrade command is particularly useful. It diffs your current configuration against the latest template and shows you exactly what changed, letting you accept or reject individual changes.
+
+## Impact
+
+DevKit has been downloaded over 15,000 times on npm and is used by several teams internally at TechCorp. It saves an estimated 2-4 hours per project setup and ensures consistent tooling across the organization.

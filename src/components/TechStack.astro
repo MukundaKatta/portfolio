@@ -1,0 +1,44 @@
+---
+const techs = [
+  { name: 'TypeScript', color: '#3178C6', icon: 'TS' },
+  { name: 'React', color: '#61DAFB', icon: 'Re' },
+  { name: 'Next.js', color: '#000000', icon: 'Nx' },
+  { name: 'Astro', color: '#FF5D01', icon: 'As' },
+  { name: 'Node.js', color: '#339933', icon: 'No' },
+  { name: 'Python', color: '#3776AB', icon: 'Py' },
+  { name: 'PostgreSQL', color: '#4169E1', icon: 'Pg' },
+  { name: 'Redis', color: '#DC382D', icon: 'Rd' },
+  { name: 'Docker', color: '#2496ED', icon: 'Dk' },
+  { name: 'AWS', color: '#FF9900', icon: 'AW' },
+  { name: 'Tailwind', color: '#06B6D4', icon: 'Tw' },
+  { name: 'Git', color: '#F05032', icon: 'Gt' },
+];
+---
+
+<section class="py-16 sm:py-20" aria-label="Technology stack">
+  <div class="container-wide">
+    <h2 class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-4 text-center animate-on-scroll">
+      Tech Stack
+    </h2>
+    <p class="text-slate-600 dark:text-slate-400 text-center mb-10 max-w-xl mx-auto animate-on-scroll">
+      Technologies I use daily to build great software
+    </p>
+
+    <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 max-w-3xl mx-auto">
+      {techs.map((tech, i) => (
+        <div
+          class="animate-on-scroll flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-300 dark:hover:border-brand-700 transition-colors group"
+          style={`animation-delay: ${i * 0.05}s`}
+        >
+          <div
+            class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold font-mono group-hover:scale-110 transition-transform"
+            style={`background-color: ${tech.color}`}
+          >
+            {tech.icon}
+          </div>
+          <span class="text-xs text-slate-600 dark:text-slate-400 font-medium text-center">{tech.name}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

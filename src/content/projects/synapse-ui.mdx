@@ -1,0 +1,55 @@
+---
+title: "Synapse UI"
+description: "A headless, accessible React component library built on Radix primitives with a Tailwind CSS styling layer and comprehensive Storybook documentation."
+tags: ["React", "TypeScript", "Tailwind CSS", "Design System"]
+github: "https://github.com/alexchen/synapse-ui"
+live: "https://synapse-ui.pages.dev"
+featured: true
+order: 2
+---
+
+## Overview
+
+Synapse UI is a component library that combines the accessibility guarantees of Radix UI primitives with the flexibility of Tailwind CSS. It provides 40+ components that are fully accessible, keyboard navigable, and customizable through a variant system powered by `class-variance-authority`.
+
+## Motivation
+
+Most component libraries force a choice: use a fully styled library like Material UI and fight its opinions, or use a headless library like Radix and build everything from scratch. Synapse UI occupies the middle ground. It provides sensible default styles that are easy to customize because they are built with Tailwind utility classes.
+
+## Architecture
+
+Each component follows a consistent pattern:
+
+```tsx
+import { cva, type VariantProps } from 'class-variance-authority';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+
+const dialogOverlayVariants = cva(
+  'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm',
+  {
+    variants: {
+      animation: {
+        fade: 'animate-in fade-in',
+        none: '',
+      },
+    },
+    defaultVariants: {
+      animation: 'fade',
+    },
+  }
+);
+```
+
+Components are tree-shakeable. If you only use the Button and Dialog components, only those components are included in your bundle.
+
+## Features
+
+- **40+ components** including Dialog, Dropdown, Tabs, Toast, Tooltip, Accordion, and more
+- **Dark mode** support through Tailwind's `dark:` variant
+- **Fully typed** with TypeScript and exported type definitions
+- **Storybook** documentation with interactive examples and accessibility audits
+- **Copy-paste ready** - components can be copied directly into your project if you prefer not to use the package
+
+## Impact
+
+Synapse UI powers the internal tools at TechCorp and two client-facing products. It reduced the time to build new UI features by approximately 60% and eliminated accessibility issues that were previously found during audits.
